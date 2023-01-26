@@ -3855,7 +3855,7 @@ var encode = function(value) {
 
 var createQueryParams = function(params) {
     return Object.keys(params).filter((function(k) {
-        return typeof params[k] !== "undefined";
+        return typeof params[k] !== "undefined" && encodeURIComponent(params[k]) !== "";
     })).map((function(k) {
         return encodeURIComponent(k) + "=" + encodeURIComponent(params[k]);
     })).join("&");
@@ -4935,6 +4935,7 @@ var Auth0Client = function() {
     };
     Auth0Client.prototype._getParams = function(authorizeOptions, state, nonce, code_challenge, redirect_uri) {
         var _a = this.options;
+        _a.authorizePath;
         _a.useRefreshTokens;
         _a.useCookiesForTransactions;
         _a.useFormData;
@@ -4949,7 +4950,7 @@ var Auth0Client = function() {
         _a.domain;
         _a.leeway;
         _a.httpTimeoutInSeconds;
-        var loginOptions = __rest(_a, [ "useRefreshTokens", "useCookiesForTransactions", "useFormData", "auth0Client", "cacheLocation", "advancedOptions", "detailedResponse", "nowProvider", "authorizeTimeoutInSeconds", "legacySameSiteCookie", "sessionCheckExpiryDays", "domain", "leeway", "httpTimeoutInSeconds" ]);
+        var loginOptions = __rest(_a, [ "authorizePath", "useRefreshTokens", "useCookiesForTransactions", "useFormData", "auth0Client", "cacheLocation", "advancedOptions", "detailedResponse", "nowProvider", "authorizeTimeoutInSeconds", "legacySameSiteCookie", "sessionCheckExpiryDays", "domain", "leeway", "httpTimeoutInSeconds" ]);
         return __assign(__assign(__assign({}, loginOptions), authorizeOptions), {
             scope: getUniqueScopes(this.defaultScope, this.scope, authorizeOptions.scope),
             response_type: "code",
@@ -4961,9 +4962,8 @@ var Auth0Client = function() {
             code_challenge_method: "S256"
         });
     };
-    Auth0Client.prototype._authorizeUrl = function(authorizeOptions) {
-        var _a = authorizeOptions.authorizePath, authorizePath = _a === void 0 ? this.options.authorizePath || DEFAULT_AUTHORIZE_PATH : _a, filteredOptions = __rest(authorizeOptions, [ "authorizePath" ]);
-        return this._url("/".concat(authorizePath, "?").concat(createQueryParams(filteredOptions)));
+    Auth0Client.prototype._authorizeUrl = function(authorizeOptions, authorizePath) {
+        return this._url("/".concat(authorizePath, "?").concat(createQueryParams(authorizeOptions)));
     };
     Auth0Client.prototype._verifyIdToken = function(id_token, nonce, organizationId) {
         return __awaiter(this, void 0, void 0, (function() {
@@ -5012,22 +5012,23 @@ var Auth0Client = function() {
             options = {};
         }
         return __awaiter(this, void 0, void 0, (function() {
-            var redirect_uri, appState, authorizeOptions, stateIn, nonceIn, code_verifier, code_challengeBuffer, code_challenge, fragment, params, url, organizationId;
-            return __generator(this, (function(_a) {
-                switch (_a.label) {
+            var _a, authorizePath, redirect_uri, appState, authorizeOptions, stateIn, nonceIn, code_verifier, code_challengeBuffer, code_challenge, fragment, params, url, organizationId;
+            return __generator(this, (function(_b) {
+                switch (_b.label) {
                   case 0:
-                    redirect_uri = options.redirect_uri, appState = options.appState, authorizeOptions = __rest(options, [ "redirect_uri", "appState" ]);
+                    _a = options.authorizePath, authorizePath = _a === void 0 ? this.options.authorizePath || DEFAULT_AUTHORIZE_PATH : _a, 
+                    redirect_uri = options.redirect_uri, appState = options.appState, authorizeOptions = __rest(options, [ "authorizePath", "redirect_uri", "appState" ]);
                     stateIn = encode(createRandomString());
                     nonceIn = encode(createRandomString());
                     code_verifier = createRandomString();
                     return [ 4, sha256(code_verifier) ];
 
                   case 1:
-                    code_challengeBuffer = _a.sent();
+                    code_challengeBuffer = _b.sent();
                     code_challenge = bufferToBase64UrlEncoded(code_challengeBuffer);
                     fragment = options.fragment ? "#".concat(options.fragment) : "";
                     params = this._getParams(authorizeOptions, stateIn, nonceIn, code_challenge, redirect_uri);
-                    url = this._authorizeUrl(params);
+                    url = this._authorizeUrl(params, authorizePath);
                     organizationId = options.organization || this.options.organization;
                     this.transactionManager.create(__assign({
                         nonce: nonceIn,
@@ -5047,9 +5048,9 @@ var Auth0Client = function() {
     };
     Auth0Client.prototype.loginWithPopup = function(options, config) {
         return __awaiter(this, void 0, void 0, (function() {
-            var authorizeOptions, stateIn, nonceIn, code_verifier, code_challengeBuffer, code_challenge, params, url, codeResult, authResult, organizationId, decodedToken, cacheEntry;
-            return __generator(this, (function(_a) {
-                switch (_a.label) {
+            var _a, authorizePath, authorizeOptions, stateIn, nonceIn, code_verifier, code_challengeBuffer, code_challenge, params, url, codeResult, authResult, organizationId, decodedToken, cacheEntry;
+            return __generator(this, (function(_b) {
+                switch (_b.label) {
                   case 0:
                     options = options || {};
                     config = config || {};
@@ -5059,26 +5060,27 @@ var Auth0Client = function() {
                             throw new Error("Unable to open a popup for loginWithPopup - window.open returned `null`");
                         }
                     }
-                    authorizeOptions = __rest(options, []);
+                    _a = options.authorizePath, authorizePath = _a === void 0 ? this.options.authorizePath || DEFAULT_AUTHORIZE_PATH : _a, 
+                    authorizeOptions = __rest(options, [ "authorizePath" ]);
                     stateIn = encode(createRandomString());
                     nonceIn = encode(createRandomString());
                     code_verifier = createRandomString();
                     return [ 4, sha256(code_verifier) ];
 
                   case 1:
-                    code_challengeBuffer = _a.sent();
+                    code_challengeBuffer = _b.sent();
                     code_challenge = bufferToBase64UrlEncoded(code_challengeBuffer);
                     params = this._getParams(authorizeOptions, stateIn, nonceIn, code_challenge, this.options.redirect_uri || window.location.origin);
                     url = this._authorizeUrl(__assign(__assign({}, params), {
                         response_mode: "web_message"
-                    }));
+                    }), authorizePath);
                     config.popup.location.href = url;
                     return [ 4, runPopup(__assign(__assign({}, config), {
                         timeoutInSeconds: config.timeoutInSeconds || this.options.authorizeTimeoutInSeconds || DEFAULT_AUTHORIZE_TIMEOUT_IN_SECONDS
                     })) ];
 
                   case 2:
-                    codeResult = _a.sent();
+                    codeResult = _b.sent();
                     if (stateIn !== codeResult.state) {
                         throw new Error("Invalid state");
                     }
@@ -5097,12 +5099,12 @@ var Auth0Client = function() {
                     }, this.worker) ];
 
                   case 3:
-                    authResult = _a.sent();
+                    authResult = _b.sent();
                     organizationId = options.organization || this.options.organization;
                     return [ 4, this._verifyIdToken(authResult.id_token, nonceIn, organizationId) ];
 
                   case 4:
-                    decodedToken = _a.sent();
+                    decodedToken = _b.sent();
                     cacheEntry = __assign(__assign({}, authResult), {
                         decodedToken: decodedToken,
                         scope: params.scope,
@@ -5112,7 +5114,7 @@ var Auth0Client = function() {
                     return [ 4, this.cacheManager.set(cacheEntry) ];
 
                   case 5:
-                    _a.sent();
+                    _b.sent();
                     this.cookieStorage.save(this.isAuthenticatedCookieName, true, {
                         daysUntilExpire: this.sessionCheckExpiryDays,
                         cookieDomain: this.options.cookieDomain
@@ -5535,9 +5537,9 @@ var Auth0Client = function() {
     };
     Auth0Client.prototype._getTokenFromIFrame = function(options) {
         return __awaiter(this, void 0, void 0, (function() {
-            var stateIn, nonceIn, code_verifier, code_challengeBuffer, code_challenge, withoutClientOptions, params, orgIdHint, url, authorizeTimeout, codeResult, scope, audience, customOptions, tokenResult, decodedToken, e_1;
-            return __generator(this, (function(_a) {
-                switch (_a.label) {
+            var stateIn, nonceIn, code_verifier, code_challengeBuffer, code_challenge, _a, authorizePath, withoutClientOptions, params, orgIdHint, url, authorizeTimeout, codeResult, scope, audience, customOptions, tokenResult, decodedToken, e_1;
+            return __generator(this, (function(_b) {
+                switch (_b.label) {
                   case 0:
                     stateIn = encode(createRandomString());
                     nonceIn = encode(createRandomString());
@@ -5545,9 +5547,10 @@ var Auth0Client = function() {
                     return [ 4, sha256(code_verifier) ];
 
                   case 1:
-                    code_challengeBuffer = _a.sent();
+                    code_challengeBuffer = _b.sent();
                     code_challenge = bufferToBase64UrlEncoded(code_challengeBuffer);
-                    withoutClientOptions = __rest(options, [ "detailedResponse" ]);
+                    _a = options.authorizePath, authorizePath = _a === void 0 ? this.options.authorizePath || DEFAULT_AUTHORIZE_PATH : _a, 
+                    withoutClientOptions = __rest(options, [ "authorizePath", "detailedResponse" ]);
                     params = this._getParams(withoutClientOptions, stateIn, nonceIn, code_challenge, options.redirect_uri || this.options.redirect_uri || window.location.origin);
                     orgIdHint = this.cookieStorage.get(this.orgHintCookieName);
                     if (orgIdHint && !params.organization) {
@@ -5556,11 +5559,11 @@ var Auth0Client = function() {
                     url = this._authorizeUrl(__assign(__assign({}, params), {
                         prompt: "none",
                         response_mode: "web_message"
-                    }));
-                    _a.label = 2;
+                    }), authorizePath);
+                    _b.label = 2;
 
                   case 2:
-                    _a.trys.push([ 2, 6, , 7 ]);
+                    _b.trys.push([ 2, 6, , 7 ]);
                     if (window.crossOriginIsolated) {
                         throw new GenericError("login_required", "The application is running in a Cross-Origin Isolated context, silently retrieving a token without refresh token is not possible.");
                     }
@@ -5568,7 +5571,7 @@ var Auth0Client = function() {
                     return [ 4, runIframe(url, this.domainUrl, authorizeTimeout) ];
 
                   case 3:
-                    codeResult = _a.sent();
+                    codeResult = _b.sent();
                     if (stateIn !== codeResult.state) {
                         throw new Error("Invalid state");
                     }
@@ -5588,11 +5591,11 @@ var Auth0Client = function() {
                     }), this.worker) ];
 
                   case 4:
-                    tokenResult = _a.sent();
+                    tokenResult = _b.sent();
                     return [ 4, this._verifyIdToken(tokenResult.id_token, nonceIn) ];
 
                   case 5:
-                    decodedToken = _a.sent();
+                    decodedToken = _b.sent();
                     this._processOrgIdHint(decodedToken.claims.org_id);
                     return [ 2, __assign(__assign({}, tokenResult), {
                         decodedToken: decodedToken,
@@ -5602,7 +5605,7 @@ var Auth0Client = function() {
                     }) ];
 
                   case 6:
-                    e_1 = _a.sent();
+                    e_1 = _b.sent();
                     if (e_1.error === "login_required") {
                         this.logout({
                             localOnly: true
