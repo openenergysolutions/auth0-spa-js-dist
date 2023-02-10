@@ -4063,7 +4063,7 @@
         }));
     }
     function oauthToken(_a, worker) {
-        var baseUrl = _a.baseUrl, timeout = _a.timeout, audience = _a.audience, scope = _a.scope, auth0Client = _a.auth0Client, useFormData = _a.useFormData, _b = _a.tokenPath, tokenPath = _b === void 0 ? DEFAULT_TOKEN_PATH : _b, options = __rest(_a, [ "baseUrl", "timeout", "audience", "scope", "auth0Client", "useFormData", "tokenPath" ]);
+        var baseUrl = _a.baseUrl, timeout = _a.timeout, audience = _a.audience, scope = _a.scope, auth0Client = _a.auth0Client, useFormData = _a.useFormData, disableAuth0Client = _a.disableAuth0Client, _b = _a.tokenPath, tokenPath = _b === void 0 ? DEFAULT_TOKEN_PATH : _b, options = __rest(_a, [ "baseUrl", "timeout", "audience", "scope", "auth0Client", "useFormData", "disableAuth0Client", "tokenPath" ]);
         return __awaiter(this, void 0, void 0, (function() {
             var body;
             return __generator(this, (function(_c) {
@@ -4080,7 +4080,7 @@
                         body: body,
                         headers: {
                             "Content-Type": useFormData ? "application/x-www-form-urlencoded" : "application/json",
-                            "Auth0-Client": btoa(JSON.stringify(auth0Client || DEFAULT_AUTH0_CLIENT))
+                            "Auth0-Client": disableAuth0Client ? undefined : btoa(JSON.stringify(auth0Client || DEFAULT_AUTH0_CLIENT))
                         }
                     }, worker, useFormData) ];
 
