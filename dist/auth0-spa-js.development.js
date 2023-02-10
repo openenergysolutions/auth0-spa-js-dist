@@ -3600,6 +3600,7 @@
     var Lock = unwrapExports(browserTabsLock);
     var version = "1.22.6";
     var DEFAULT_AUTHORIZE_PATH = "authorize";
+    var DEFAULT_TOKEN_PATH = "oauth/token";
     var DEFAULT_AUTHORIZE_TIMEOUT_IN_SECONDS = 60;
     var DEFAULT_POPUP_CONFIG_OPTIONS = {
         timeoutInSeconds: DEFAULT_AUTHORIZE_TIMEOUT_IN_SECONDS
@@ -4062,14 +4063,19 @@
         }));
     }
     function oauthToken(_a, worker) {
-        var baseUrl = _a.baseUrl, timeout = _a.timeout, audience = _a.audience, scope = _a.scope, auth0Client = _a.auth0Client, useFormData = _a.useFormData, options = __rest(_a, [ "baseUrl", "timeout", "audience", "scope", "auth0Client", "useFormData" ]);
+        var baseUrl = _a.baseUrl, timeout = _a.timeout, audience = _a.audience, scope = _a.scope, auth0Client = _a.auth0Client, useFormData = _a.useFormData, _b = _a.tokenPath, tokenPath = _b === void 0 ? DEFAULT_TOKEN_PATH : _b, options = __rest(_a, [ "baseUrl", "timeout", "audience", "scope", "auth0Client", "useFormData", "tokenPath" ]);
         return __awaiter(this, void 0, void 0, (function() {
             var body;
-            return __generator(this, (function(_b) {
-                switch (_b.label) {
+            return __generator(this, (function(_c) {
+                switch (_c.label) {
                   case 0:
+                    console.log("oauthToken, tokenPath: ", tokenPath);
+                    console.log("oauthToken, options: ", options);
                     body = useFormData ? createQueryParams(options) : JSON.stringify(options);
-                    return [ 4, getJSON("".concat(baseUrl, "/oauth/token"), timeout, audience || "default", scope, {
+                    console.log("oauthToken, body: ", body);
+                    console.log("oauthToken, options: ", options);
+                    console.log("oauthToken, baseUrl: ", baseUrl);
+                    return [ 4, getJSON("".concat(baseUrl, "/").concat(tokenPath), timeout, audience || "default", scope, {
                         method: "POST",
                         body: body,
                         headers: {
@@ -4079,7 +4085,7 @@
                     }, worker, useFormData) ];
 
                   case 1:
-                    return [ 2, _b.sent() ];
+                    return [ 2, _c.sent() ];
                 }
             }));
         }));
@@ -4960,6 +4966,7 @@
         Auth0Client.prototype._getParams = function(authorizeOptions, state, nonce, code_challenge, redirect_uri) {
             var _a = this.options;
             _a.authorizePath;
+            _a.tokenPath;
             _a.useRefreshTokens;
             _a.useCookiesForTransactions;
             _a.useFormData;
@@ -4974,7 +4981,7 @@
             _a.domain;
             _a.leeway;
             _a.httpTimeoutInSeconds;
-            var loginOptions = __rest(_a, [ "authorizePath", "useRefreshTokens", "useCookiesForTransactions", "useFormData", "auth0Client", "cacheLocation", "advancedOptions", "detailedResponse", "nowProvider", "authorizeTimeoutInSeconds", "legacySameSiteCookie", "sessionCheckExpiryDays", "domain", "leeway", "httpTimeoutInSeconds" ]);
+            var loginOptions = __rest(_a, [ "authorizePath", "tokenPath", "useRefreshTokens", "useCookiesForTransactions", "useFormData", "auth0Client", "cacheLocation", "advancedOptions", "detailedResponse", "nowProvider", "authorizeTimeoutInSeconds", "legacySameSiteCookie", "sessionCheckExpiryDays", "domain", "leeway", "httpTimeoutInSeconds" ]);
             return __assign(__assign(__assign({}, loginOptions), authorizeOptions), {
                 scope: getUniqueScopes(this.defaultScope, this.scope, authorizeOptions.scope),
                 response_type: "code",
@@ -5072,9 +5079,9 @@
         };
         Auth0Client.prototype.loginWithPopup = function(options, config) {
             return __awaiter(this, void 0, void 0, (function() {
-                var _a, authorizePath, authorizeOptions, stateIn, nonceIn, code_verifier, code_challengeBuffer, code_challenge, params, url, codeResult, authResult, organizationId, decodedToken, cacheEntry;
-                return __generator(this, (function(_b) {
-                    switch (_b.label) {
+                var _a, authorizePath, _b, tokenPath, authorizeOptions, stateIn, nonceIn, code_verifier, code_challengeBuffer, code_challenge, params, url, codeResult, authResult, organizationId, decodedToken, cacheEntry;
+                return __generator(this, (function(_c) {
+                    switch (_c.label) {
                       case 0:
                         options = options || {};
                         config = config || {};
@@ -5085,14 +5092,15 @@
                             }
                         }
                         _a = options.authorizePath, authorizePath = _a === void 0 ? this.options.authorizePath || DEFAULT_AUTHORIZE_PATH : _a, 
-                        authorizeOptions = __rest(options, [ "authorizePath" ]);
+                        _b = options.tokenPath, tokenPath = _b === void 0 ? this.options.tokenPath || DEFAULT_TOKEN_PATH : _b, 
+                        authorizeOptions = __rest(options, [ "authorizePath", "tokenPath" ]);
                         stateIn = encode(createRandomString());
                         nonceIn = encode(createRandomString());
                         code_verifier = createRandomString();
                         return [ 4, sha256(code_verifier) ];
 
                       case 1:
-                        code_challengeBuffer = _b.sent();
+                        code_challengeBuffer = _c.sent();
                         code_challenge = bufferToBase64UrlEncoded(code_challengeBuffer);
                         params = this._getParams(authorizeOptions, stateIn, nonceIn, code_challenge, this.options.redirect_uri || window.location.origin);
                         url = this._authorizeUrl(__assign(__assign({}, params), {
@@ -5104,7 +5112,7 @@
                         })) ];
 
                       case 2:
-                        codeResult = _b.sent();
+                        codeResult = _c.sent();
                         if (stateIn !== codeResult.state) {
                             throw new Error("Invalid state");
                         }
@@ -5119,16 +5127,17 @@
                             redirect_uri: params.redirect_uri,
                             auth0Client: this.options.auth0Client,
                             useFormData: this.options.useFormData,
-                            timeout: this.httpTimeoutMs
+                            timeout: this.httpTimeoutMs,
+                            tokenPath: tokenPath
                         }, this.worker) ];
 
                       case 3:
-                        authResult = _b.sent();
+                        authResult = _c.sent();
                         organizationId = options.organization || this.options.organization;
                         return [ 4, this._verifyIdToken(authResult.id_token, nonceIn, organizationId) ];
 
                       case 4:
-                        decodedToken = _b.sent();
+                        decodedToken = _c.sent();
                         cacheEntry = __assign(__assign({}, authResult), {
                             decodedToken: decodedToken,
                             scope: params.scope,
@@ -5138,7 +5147,7 @@
                         return [ 4, this.cacheManager.set(cacheEntry) ];
 
                       case 5:
-                        _b.sent();
+                        _c.sent();
                         this.cookieStorage.save(this.isAuthenticatedCookieName, true, {
                             daysUntilExpire: this.sessionCheckExpiryDays,
                             cookieDomain: this.options.cookieDomain
@@ -5222,16 +5231,21 @@
                 url = window.location.href;
             }
             return __awaiter(this, void 0, void 0, (function() {
-                var queryStringFragments, _a, state, code, error, error_description, transaction, tokenOptions, authResult, decodedToken;
+                var queryStringFragments, _a, state, code, error, error_description, transaction, tokenPath, tokenOptions, authResult, decodedToken;
                 return __generator(this, (function(_b) {
                     switch (_b.label) {
                       case 0:
                         queryStringFragments = url.split("?").slice(1);
+                        console.log("handleRedirectCallback, queryStringFragments:", queryStringFragments);
                         if (queryStringFragments.length === 0) {
                             throw new Error("There are no query params available for parsing.");
                         }
                         _a = parseQueryResult(queryStringFragments.join("")), state = _a.state, code = _a.code, 
                         error = _a.error, error_description = _a.error_description;
+                        console.log("handleRedirectCallback, state:", state);
+                        console.log("handleRedirectCallback, code:", code);
+                        console.log("handleRedirectCallback, error:", error);
+                        console.log("handleRedirectCallback, error_description:", error_description);
                         transaction = this.transactionManager.get();
                         if (!transaction) {
                             throw new Error("Invalid state");
@@ -5243,6 +5257,7 @@
                         if (!transaction.code_verifier || transaction.state && transaction.state !== state) {
                             throw new Error("Invalid state");
                         }
+                        tokenPath = this.options.tokenPath || DEFAULT_TOKEN_PATH;
                         tokenOptions = {
                             audience: transaction.audience,
                             scope: transaction.scope,
@@ -5253,7 +5268,8 @@
                             code: code,
                             auth0Client: this.options.auth0Client,
                             useFormData: this.options.useFormData,
-                            timeout: this.httpTimeoutMs
+                            timeout: this.httpTimeoutMs,
+                            tokenPath: tokenPath
                         };
                         if (undefined !== transaction.redirect_uri) {
                             tokenOptions.redirect_uri = transaction.redirect_uri;
@@ -5262,10 +5278,12 @@
 
                       case 1:
                         authResult = _b.sent();
+                        console.log("handleRedirectCallback, authResult:", authResult);
                         return [ 4, this._verifyIdToken(authResult.id_token, transaction.nonce, transaction.organizationId) ];
 
                       case 2:
                         decodedToken = _b.sent();
+                        console.log("handleRedirectCallback, decodedToken:", decodedToken);
                         return [ 4, this.cacheManager.set(__assign(__assign(__assign(__assign({}, authResult), {
                             decodedToken: decodedToken,
                             audience: transaction.audience,
@@ -5561,9 +5579,9 @@
         };
         Auth0Client.prototype._getTokenFromIFrame = function(options) {
             return __awaiter(this, void 0, void 0, (function() {
-                var stateIn, nonceIn, code_verifier, code_challengeBuffer, code_challenge, _a, authorizePath, withoutClientOptions, params, orgIdHint, url, authorizeTimeout, codeResult, scope, audience, customOptions, tokenResult, decodedToken, e_1;
-                return __generator(this, (function(_b) {
-                    switch (_b.label) {
+                var stateIn, nonceIn, code_verifier, code_challengeBuffer, code_challenge, _a, authorizePath, _b, tokenPath, withoutClientOptions, params, orgIdHint, url, authorizeTimeout, codeResult, scope, audience, customOptions, tokenResult, decodedToken, e_1;
+                return __generator(this, (function(_c) {
+                    switch (_c.label) {
                       case 0:
                         stateIn = encode(createRandomString());
                         nonceIn = encode(createRandomString());
@@ -5571,10 +5589,11 @@
                         return [ 4, sha256(code_verifier) ];
 
                       case 1:
-                        code_challengeBuffer = _b.sent();
+                        code_challengeBuffer = _c.sent();
                         code_challenge = bufferToBase64UrlEncoded(code_challengeBuffer);
                         _a = options.authorizePath, authorizePath = _a === void 0 ? this.options.authorizePath || DEFAULT_AUTHORIZE_PATH : _a, 
-                        withoutClientOptions = __rest(options, [ "authorizePath", "detailedResponse" ]);
+                        _b = options.tokenPath, tokenPath = _b === void 0 ? this.options.tokenPath || DEFAULT_TOKEN_PATH : _b, 
+                        withoutClientOptions = __rest(options, [ "authorizePath", "tokenPath", "detailedResponse" ]);
                         params = this._getParams(withoutClientOptions, stateIn, nonceIn, code_challenge, options.redirect_uri || this.options.redirect_uri || window.location.origin);
                         orgIdHint = this.cookieStorage.get(this.orgHintCookieName);
                         if (orgIdHint && !params.organization) {
@@ -5584,10 +5603,10 @@
                             prompt: "none",
                             response_mode: "web_message"
                         }), authorizePath);
-                        _b.label = 2;
+                        _c.label = 2;
 
                       case 2:
-                        _b.trys.push([ 2, 6, , 7 ]);
+                        _c.trys.push([ 2, 6, , 7 ]);
                         if (window.crossOriginIsolated) {
                             throw new GenericError("login_required", "The application is running in a Cross-Origin Isolated context, silently retrieving a token without refresh token is not possible.");
                         }
@@ -5595,7 +5614,7 @@
                         return [ 4, runIframe(url, this.domainUrl, authorizeTimeout) ];
 
                       case 3:
-                        codeResult = _b.sent();
+                        codeResult = _c.sent();
                         if (stateIn !== codeResult.state) {
                             throw new Error("Invalid state");
                         }
@@ -5611,15 +5630,16 @@
                             redirect_uri: params.redirect_uri,
                             auth0Client: this.options.auth0Client,
                             useFormData: this.options.useFormData,
-                            timeout: customOptions.timeout || this.httpTimeoutMs
+                            timeout: customOptions.timeout || this.httpTimeoutMs,
+                            tokenPath: tokenPath
                         }), this.worker) ];
 
                       case 4:
-                        tokenResult = _b.sent();
+                        tokenResult = _c.sent();
                         return [ 4, this._verifyIdToken(tokenResult.id_token, nonceIn) ];
 
                       case 5:
-                        decodedToken = _b.sent();
+                        decodedToken = _c.sent();
                         this._processOrgIdHint(decodedToken.claims.org_id);
                         return [ 2, __assign(__assign({}, tokenResult), {
                             decodedToken: decodedToken,
@@ -5629,7 +5649,7 @@
                         }) ];
 
                       case 6:
-                        e_1 = _b.sent();
+                        e_1 = _c.sent();
                         if (e_1.error === "login_required") {
                             this.logout({
                                 localOnly: true
