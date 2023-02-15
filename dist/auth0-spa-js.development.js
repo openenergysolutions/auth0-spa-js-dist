@@ -3981,7 +3981,7 @@
             }));
         }));
     };
-    var fetchWithWorker = function(fetchUrl, audience, scope, fetchOptions, timeout, worker, useFormData) {
+    var fetchWithWorker = function(fetchUrl, audience, scope, fetchOptions, timeout, worker, useFormData, disableAuth0Client) {
         return __awaiter(void 0, void 0, void 0, (function() {
             return __generator(this, (function(_a) {
                 return [ 2, sendMessage({
@@ -3992,26 +3992,27 @@
                     timeout: timeout,
                     fetchUrl: fetchUrl,
                     fetchOptions: fetchOptions,
-                    useFormData: useFormData
+                    useFormData: useFormData,
+                    disableAuth0Client: disableAuth0Client
                 }, worker) ];
             }));
         }));
     };
-    var switchFetch = function(fetchUrl, audience, scope, fetchOptions, worker, useFormData, timeout) {
+    var switchFetch = function(fetchUrl, audience, scope, fetchOptions, worker, useFormData, disableAuth0Client, timeout) {
         if (timeout === void 0) {
             timeout = DEFAULT_FETCH_TIMEOUT_MS;
         }
         return __awaiter(void 0, void 0, void 0, (function() {
             return __generator(this, (function(_a) {
                 if (worker) {
-                    return [ 2, fetchWithWorker(fetchUrl, audience, scope, fetchOptions, timeout, worker, useFormData) ];
+                    return [ 2, fetchWithWorker(fetchUrl, audience, scope, fetchOptions, timeout, worker, useFormData, disableAuth0Client) ];
                 } else {
                     return [ 2, fetchWithoutWorker(fetchUrl, fetchOptions, timeout) ];
                 }
             }));
         }));
     };
-    function getJSON(url, timeout, audience, scope, options, worker, useFormData) {
+    function getJSON(url, timeout, audience, scope, options, worker, useFormData, disableAuth0Client) {
         return __awaiter(this, void 0, void 0, (function() {
             var fetchError, response, i, e_1, _a, error, error_description, data, ok, errorMessage;
             return __generator(this, (function(_b) {
@@ -4027,7 +4028,7 @@
 
                   case 2:
                     _b.trys.push([ 2, 4, , 5 ]);
-                    return [ 4, switchFetch(url, audience, scope, options, worker, useFormData, timeout) ];
+                    return [ 4, switchFetch(url, audience, scope, options, worker, useFormData, disableAuth0Client, timeout) ];
 
                   case 3:
                     response = _b.sent();
@@ -4065,23 +4066,27 @@
     function oauthToken(_a, worker) {
         var baseUrl = _a.baseUrl, timeout = _a.timeout, audience = _a.audience, scope = _a.scope, auth0Client = _a.auth0Client, useFormData = _a.useFormData, disableAuth0Client = _a.disableAuth0Client, _b = _a.tokenPath, tokenPath = _b === void 0 ? DEFAULT_TOKEN_PATH : _b, options = __rest(_a, [ "baseUrl", "timeout", "audience", "scope", "auth0Client", "useFormData", "disableAuth0Client", "tokenPath" ]);
         return __awaiter(this, void 0, void 0, (function() {
-            var body;
+            var body, headers;
             return __generator(this, (function(_c) {
                 switch (_c.label) {
                   case 0:
                     console.log("oauthToken, tokenPath: ", tokenPath);
-                    console.log("oauthToken, options: ", options);
                     body = useFormData ? createQueryParams(options) : JSON.stringify(options);
                     console.log("oauthToken, body: ", body);
                     console.log("oauthToken, options: ", options);
                     console.log("oauthToken, baseUrl: ", baseUrl);
+                    console.log("oauthToken, disableAuth0Client: ", disableAuth0Client);
+                    headers = {
+                        "Content-Type": useFormData ? "application/x-www-form-urlencoded" : "application/json"
+                    };
+                    if (!disableAuth0Client) {
+                        headers["Auth0-Client"] = btoa(JSON.stringify(auth0Client || DEFAULT_AUTH0_CLIENT));
+                    }
+                    console.log("oauthToken, headers: ", headers);
                     return [ 4, getJSON("".concat(baseUrl, "/").concat(tokenPath), timeout, audience || "default", scope, {
                         method: "POST",
                         body: body,
-                        headers: {
-                            "Content-Type": useFormData ? "application/x-www-form-urlencoded" : "application/json",
-                            "Auth0-Client": disableAuth0Client ? undefined : btoa(JSON.stringify(auth0Client || DEFAULT_AUTH0_CLIENT))
-                        }
+                        headers: headers
                     }, worker, useFormData) ];
 
                   case 1:
@@ -4444,6 +4449,9 @@
                 user[k] = payloadJSON[k];
             }
         }));
+        if (claims.iss && !claims.iss.endsWith("/")) {
+            claims.iss += "/";
+        }
         return {
             encoded: {
                 header: header,
@@ -4970,6 +4978,7 @@
             _a.useRefreshTokens;
             _a.useCookiesForTransactions;
             _a.useFormData;
+            _a.disableAuth0Client;
             _a.auth0Client;
             _a.cacheLocation;
             _a.advancedOptions;
@@ -4981,7 +4990,7 @@
             _a.domain;
             _a.leeway;
             _a.httpTimeoutInSeconds;
-            var loginOptions = __rest(_a, [ "authorizePath", "tokenPath", "useRefreshTokens", "useCookiesForTransactions", "useFormData", "auth0Client", "cacheLocation", "advancedOptions", "detailedResponse", "nowProvider", "authorizeTimeoutInSeconds", "legacySameSiteCookie", "sessionCheckExpiryDays", "domain", "leeway", "httpTimeoutInSeconds" ]);
+            var loginOptions = __rest(_a, [ "authorizePath", "tokenPath", "useRefreshTokens", "useCookiesForTransactions", "useFormData", "disableAuth0Client", "auth0Client", "cacheLocation", "advancedOptions", "detailedResponse", "nowProvider", "authorizeTimeoutInSeconds", "legacySameSiteCookie", "sessionCheckExpiryDays", "domain", "leeway", "httpTimeoutInSeconds" ]);
             return __assign(__assign(__assign({}, loginOptions), authorizeOptions), {
                 scope: getUniqueScopes(this.defaultScope, this.scope, authorizeOptions.scope),
                 response_type: "code",
@@ -5079,9 +5088,9 @@
         };
         Auth0Client.prototype.loginWithPopup = function(options, config) {
             return __awaiter(this, void 0, void 0, (function() {
-                var _a, authorizePath, _b, tokenPath, authorizeOptions, stateIn, nonceIn, code_verifier, code_challengeBuffer, code_challenge, params, url, codeResult, authResult, organizationId, decodedToken, cacheEntry;
-                return __generator(this, (function(_c) {
-                    switch (_c.label) {
+                var _a, authorizePath, _b, tokenPath, _c, disableAuth0Client, authorizeOptions, stateIn, nonceIn, code_verifier, code_challengeBuffer, code_challenge, params, url, codeResult, authResult, organizationId, decodedToken, cacheEntry;
+                return __generator(this, (function(_d) {
+                    switch (_d.label) {
                       case 0:
                         options = options || {};
                         config = config || {};
@@ -5093,14 +5102,16 @@
                         }
                         _a = options.authorizePath, authorizePath = _a === void 0 ? this.options.authorizePath || DEFAULT_AUTHORIZE_PATH : _a, 
                         _b = options.tokenPath, tokenPath = _b === void 0 ? this.options.tokenPath || DEFAULT_TOKEN_PATH : _b, 
-                        authorizeOptions = __rest(options, [ "authorizePath", "tokenPath" ]);
+                        _c = options.disableAuth0Client, disableAuth0Client = _c === void 0 ? this.options.disableAuth0Client : _c, 
+                        authorizeOptions = __rest(options, [ "authorizePath", "tokenPath", "disableAuth0Client" ]);
+                        console.log("loginWithPopup, disableAuth0Client: ", disableAuth0Client);
                         stateIn = encode(createRandomString());
                         nonceIn = encode(createRandomString());
                         code_verifier = createRandomString();
                         return [ 4, sha256(code_verifier) ];
 
                       case 1:
-                        code_challengeBuffer = _c.sent();
+                        code_challengeBuffer = _d.sent();
                         code_challenge = bufferToBase64UrlEncoded(code_challengeBuffer);
                         params = this._getParams(authorizeOptions, stateIn, nonceIn, code_challenge, this.options.redirect_uri || window.location.origin);
                         url = this._authorizeUrl(__assign(__assign({}, params), {
@@ -5112,7 +5123,7 @@
                         })) ];
 
                       case 2:
-                        codeResult = _c.sent();
+                        codeResult = _d.sent();
                         if (stateIn !== codeResult.state) {
                             throw new Error("Invalid state");
                         }
@@ -5127,17 +5138,18 @@
                             redirect_uri: params.redirect_uri,
                             auth0Client: this.options.auth0Client,
                             useFormData: this.options.useFormData,
+                            disableAuth0Client: disableAuth0Client,
                             timeout: this.httpTimeoutMs,
                             tokenPath: tokenPath
                         }, this.worker) ];
 
                       case 3:
-                        authResult = _c.sent();
+                        authResult = _d.sent();
                         organizationId = options.organization || this.options.organization;
                         return [ 4, this._verifyIdToken(authResult.id_token, nonceIn, organizationId) ];
 
                       case 4:
-                        decodedToken = _c.sent();
+                        decodedToken = _d.sent();
                         cacheEntry = __assign(__assign({}, authResult), {
                             decodedToken: decodedToken,
                             scope: params.scope,
@@ -5147,7 +5159,7 @@
                         return [ 4, this.cacheManager.set(cacheEntry) ];
 
                       case 5:
-                        _c.sent();
+                        _d.sent();
                         this.cookieStorage.save(this.isAuthenticatedCookieName, true, {
                             daysUntilExpire: this.sessionCheckExpiryDays,
                             cookieDomain: this.options.cookieDomain
@@ -5258,6 +5270,7 @@
                             throw new Error("Invalid state");
                         }
                         tokenPath = this.options.tokenPath || DEFAULT_TOKEN_PATH;
+                        console.log("handleRedirectCallback, disableAuth0Client:", this.options.disableAuth0Client);
                         tokenOptions = {
                             audience: transaction.audience,
                             scope: transaction.scope,
@@ -5268,6 +5281,7 @@
                             code: code,
                             auth0Client: this.options.auth0Client,
                             useFormData: this.options.useFormData,
+                            disableAuth0Client: this.options.disableAuth0Client,
                             timeout: this.httpTimeoutMs,
                             tokenPath: tokenPath
                         };
@@ -5314,6 +5328,7 @@
                 return __generator(this, (function(_a) {
                     switch (_a.label) {
                       case 0:
+                        console.log("Auth0Client, checkSession, options:", options);
                         if (!this.cookieStorage.get(this.isAuthenticatedCookieName)) {
                             if (!this.cookieStorage.get(OLD_IS_AUTHENTICATED_COOKIE_NAME)) {
                                 return [ 2 ];
@@ -5364,6 +5379,8 @@
                         }, options), {
                             scope: getUniqueScopes(this.defaultScope, this.scope, options.scope)
                         }), ignoreCache = _a.ignoreCache, getTokenOptions = __rest(_a, [ "ignoreCache" ]);
+                        console.log("Auth0Client, getTokenSilently, ignoreCache:", ignoreCache);
+                        console.log("Auth0Client, getTokenSilently, options:", getTokenOptions);
                         return [ 4, singlePromise((function() {
                             return _this._getTokenSilently(__assign({
                                 ignoreCache: ignoreCache
@@ -5387,6 +5404,8 @@
                     switch (_b.label) {
                       case 0:
                         ignoreCache = options.ignoreCache, getTokenOptions = __rest(options, [ "ignoreCache" ]);
+                        console.log("Auth0Client, _getTokenSilently, ignoreCache:", ignoreCache);
+                        console.log("Auth0Client, _getTokenSilently, getTokenOptions:", getTokenOptions);
                         if (!!ignoreCache) return [ 3, 2 ];
                         return [ 4, this._getEntryFromCache({
                             scope: getTokenOptions.scope,
@@ -5579,9 +5598,9 @@
         };
         Auth0Client.prototype._getTokenFromIFrame = function(options) {
             return __awaiter(this, void 0, void 0, (function() {
-                var stateIn, nonceIn, code_verifier, code_challengeBuffer, code_challenge, _a, authorizePath, _b, tokenPath, withoutClientOptions, params, orgIdHint, url, authorizeTimeout, codeResult, scope, audience, customOptions, tokenResult, decodedToken, e_1;
-                return __generator(this, (function(_c) {
-                    switch (_c.label) {
+                var stateIn, nonceIn, code_verifier, code_challengeBuffer, code_challenge, _a, authorizePath, _b, tokenPath, _c, disableAuth0Client, withoutClientOptions, params, orgIdHint, url, authorizeTimeout, codeResult, scope, audience, customOptions, tokenResult, decodedToken, e_1;
+                return __generator(this, (function(_d) {
+                    switch (_d.label) {
                       case 0:
                         stateIn = encode(createRandomString());
                         nonceIn = encode(createRandomString());
@@ -5589,11 +5608,13 @@
                         return [ 4, sha256(code_verifier) ];
 
                       case 1:
-                        code_challengeBuffer = _c.sent();
+                        code_challengeBuffer = _d.sent();
                         code_challenge = bufferToBase64UrlEncoded(code_challengeBuffer);
                         _a = options.authorizePath, authorizePath = _a === void 0 ? this.options.authorizePath || DEFAULT_AUTHORIZE_PATH : _a, 
                         _b = options.tokenPath, tokenPath = _b === void 0 ? this.options.tokenPath || DEFAULT_TOKEN_PATH : _b, 
-                        withoutClientOptions = __rest(options, [ "authorizePath", "tokenPath", "detailedResponse" ]);
+                        _c = options.disableAuth0Client, disableAuth0Client = _c === void 0 ? this.options.disableAuth0Client : _c, 
+                        withoutClientOptions = __rest(options, [ "authorizePath", "tokenPath", "disableAuth0Client", "detailedResponse" ]);
+                        console.log("_getTokenFromIFrame, disableAuth0Client: ", disableAuth0Client);
                         params = this._getParams(withoutClientOptions, stateIn, nonceIn, code_challenge, options.redirect_uri || this.options.redirect_uri || window.location.origin);
                         orgIdHint = this.cookieStorage.get(this.orgHintCookieName);
                         if (orgIdHint && !params.organization) {
@@ -5603,10 +5624,10 @@
                             prompt: "none",
                             response_mode: "web_message"
                         }), authorizePath);
-                        _c.label = 2;
+                        _d.label = 2;
 
                       case 2:
-                        _c.trys.push([ 2, 6, , 7 ]);
+                        _d.trys.push([ 2, 6, , 7 ]);
                         if (window.crossOriginIsolated) {
                             throw new GenericError("login_required", "The application is running in a Cross-Origin Isolated context, silently retrieving a token without refresh token is not possible.");
                         }
@@ -5614,7 +5635,7 @@
                         return [ 4, runIframe(url, this.domainUrl, authorizeTimeout) ];
 
                       case 3:
-                        codeResult = _c.sent();
+                        codeResult = _d.sent();
                         if (stateIn !== codeResult.state) {
                             throw new Error("Invalid state");
                         }
@@ -5630,16 +5651,17 @@
                             redirect_uri: params.redirect_uri,
                             auth0Client: this.options.auth0Client,
                             useFormData: this.options.useFormData,
+                            disableAuth0Client: disableAuth0Client,
                             timeout: customOptions.timeout || this.httpTimeoutMs,
                             tokenPath: tokenPath
                         }), this.worker) ];
 
                       case 4:
-                        tokenResult = _c.sent();
+                        tokenResult = _d.sent();
                         return [ 4, this._verifyIdToken(tokenResult.id_token, nonceIn) ];
 
                       case 5:
-                        decodedToken = _c.sent();
+                        decodedToken = _d.sent();
                         this._processOrgIdHint(decodedToken.claims.org_id);
                         return [ 2, __assign(__assign({}, tokenResult), {
                             decodedToken: decodedToken,
@@ -5649,7 +5671,7 @@
                         }) ];
 
                       case 6:
-                        e_1 = _c.sent();
+                        e_1 = _d.sent();
                         if (e_1.error === "login_required") {
                             this.logout({
                                 localOnly: true
@@ -5665,9 +5687,9 @@
         };
         Auth0Client.prototype._getTokenUsingRefreshToken = function(options) {
             return __awaiter(this, void 0, void 0, (function() {
-                var cache, redirect_uri, tokenResult, scope, audience, customOptions, timeout, e_2, decodedToken;
-                return __generator(this, (function(_a) {
-                    switch (_a.label) {
+                var cache, redirect_uri, tokenResult, scope, audience, _a, disableAuth0Client, customOptions, timeout, e_2, decodedToken;
+                return __generator(this, (function(_b) {
+                    switch (_b.label) {
                       case 0:
                         options.scope = getUniqueScopes(this.defaultScope, this.options.scope, options.scope);
                         return [ 4, this.cacheManager.get(new CacheKey({
@@ -5677,25 +5699,27 @@
                         })) ];
 
                       case 1:
-                        cache = _a.sent();
+                        cache = _b.sent();
                         if (!((!cache || !cache.refresh_token) && !this.worker)) return [ 3, 4 ];
                         if (!this.useRefreshTokensFallback) return [ 3, 3 ];
                         return [ 4, this._getTokenFromIFrame(options) ];
 
                       case 2:
-                        return [ 2, _a.sent() ];
+                        return [ 2, _b.sent() ];
 
                       case 3:
                         throw new MissingRefreshTokenError(options.audience || "default", options.scope);
 
                       case 4:
                         redirect_uri = options.redirect_uri || this.options.redirect_uri || window.location.origin;
-                        scope = options.scope, audience = options.audience, customOptions = __rest(options, [ "scope", "audience", "ignoreCache", "timeoutInSeconds", "detailedResponse" ]);
+                        scope = options.scope, audience = options.audience, _a = options.disableAuth0Client, 
+                        disableAuth0Client = _a === void 0 ? this.options.disableAuth0Client : _a, customOptions = __rest(options, [ "scope", "audience", "ignoreCache", "timeoutInSeconds", "detailedResponse", "disableAuth0Client" ]);
+                        console.log("_getTokenUsingRefreshToken, disableAuth0Client: ", disableAuth0Client);
                         timeout = typeof options.timeoutInSeconds === "number" ? options.timeoutInSeconds * 1e3 : null;
-                        _a.label = 5;
+                        _b.label = 5;
 
                       case 5:
-                        _a.trys.push([ 5, 7, , 10 ]);
+                        _b.trys.push([ 5, 7, , 10 ]);
                         return [ 4, oauthToken(__assign(__assign(__assign(__assign(__assign({}, this.customOptions), customOptions), {
                             audience: audience,
                             scope: scope,
@@ -5709,20 +5733,21 @@
                         }), {
                             auth0Client: this.options.auth0Client,
                             useFormData: this.options.useFormData,
+                            disableAuth0Client: disableAuth0Client,
                             timeout: this.httpTimeoutMs
                         }), this.worker) ];
 
                       case 6:
-                        tokenResult = _a.sent();
+                        tokenResult = _b.sent();
                         return [ 3, 10 ];
 
                       case 7:
-                        e_2 = _a.sent();
+                        e_2 = _b.sent();
                         if (!((e_2.message.indexOf(MISSING_REFRESH_TOKEN_ERROR_MESSAGE) > -1 || e_2.message && e_2.message.indexOf(INVALID_REFRESH_TOKEN_ERROR_MESSAGE) > -1) && this.useRefreshTokensFallback)) return [ 3, 9 ];
                         return [ 4, this._getTokenFromIFrame(options) ];
 
                       case 8:
-                        return [ 2, _a.sent() ];
+                        return [ 2, _b.sent() ];
 
                       case 9:
                         throw e_2;
@@ -5731,7 +5756,7 @@
                         return [ 4, this._verifyIdToken(tokenResult.id_token) ];
 
                       case 11:
-                        decodedToken = _a.sent();
+                        decodedToken = _b.sent();
                         return [ 2, __assign(__assign({}, tokenResult), {
                             decodedToken: decodedToken,
                             scope: options.scope,
