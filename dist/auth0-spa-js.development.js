@@ -3598,6 +3598,58 @@
         exports.default = SuperTokensLock;
     }));
     var Lock = unwrapExports(browserTabsLock);
+    function e(e) {
+        this.message = e;
+    }
+    e.prototype = new Error, e.prototype.name = "InvalidCharacterError";
+    var r = "undefined" != typeof window && window.atob && window.atob.bind(window) || function(r) {
+        var t = String(r).replace(/=+$/, "");
+        if (t.length % 4 == 1) throw new e("'atob' failed: The string to be decoded is not correctly encoded.");
+        for (var n, o, a = 0, i = 0, c = ""; o = t.charAt(i++); ~o && (n = a % 4 ? 64 * n + o : o, 
+        a++ % 4) ? c += String.fromCharCode(255 & n >> (-2 * a & 6)) : 0) o = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=".indexOf(o);
+        return c;
+    };
+    function t(e) {
+        var t = e.replace(/-/g, "+").replace(/_/g, "/");
+        switch (t.length % 4) {
+          case 0:
+            break;
+
+          case 2:
+            t += "==";
+            break;
+
+          case 3:
+            t += "=";
+            break;
+
+          default:
+            throw "Illegal base64url string!";
+        }
+        try {
+            return function(e) {
+                return decodeURIComponent(r(e).replace(/(.)/g, (function(e, r) {
+                    var t = r.charCodeAt(0).toString(16).toUpperCase();
+                    return t.length < 2 && (t = "0" + t), "%" + t;
+                })));
+            }(t);
+        } catch (e) {
+            return r(t);
+        }
+    }
+    function n(e) {
+        this.message = e;
+    }
+    function o(e, r) {
+        if ("string" != typeof e) throw new n("Invalid token specified");
+        var o = !0 === (r = r || {}).header ? 0 : 1;
+        try {
+            return JSON.parse(t(e.split(".")[o]));
+        } catch (e) {
+            throw new n("Invalid token specified: " + e.message);
+        }
+    }
+    n.prototype = new Error, n.prototype.name = "InvalidTokenError";
     var version = "1.22.6";
     var DEFAULT_AUTHORIZE_PATH = "authorize";
     var DEFAULT_TOKEN_PATH = "oauth/token";
@@ -4070,19 +4122,13 @@
             return __generator(this, (function(_c) {
                 switch (_c.label) {
                   case 0:
-                    console.log("oauthToken, tokenPath: ", tokenPath);
                     body = useFormData ? createQueryParams(options) : JSON.stringify(options);
-                    console.log("oauthToken, body: ", body);
-                    console.log("oauthToken, options: ", options);
-                    console.log("oauthToken, baseUrl: ", baseUrl);
-                    console.log("oauthToken, disableAuth0Client: ", disableAuth0Client);
                     headers = {
                         "Content-Type": useFormData ? "application/x-www-form-urlencoded" : "application/json"
                     };
                     if (!disableAuth0Client) {
                         headers["Auth0-Client"] = btoa(JSON.stringify(auth0Client || DEFAULT_AUTH0_CLIENT));
                     }
-                    console.log("oauthToken, headers: ", headers);
                     return [ 4, getJSON("".concat(baseUrl, "/").concat(tokenPath), timeout, audience || "default", scope, {
                         method: "POST",
                         body: body,
@@ -5104,7 +5150,6 @@
                         _b = options.tokenPath, tokenPath = _b === void 0 ? this.options.tokenPath || DEFAULT_TOKEN_PATH : _b, 
                         _c = options.disableAuth0Client, disableAuth0Client = _c === void 0 ? this.options.disableAuth0Client : _c, 
                         authorizeOptions = __rest(options, [ "authorizePath", "tokenPath", "disableAuth0Client" ]);
-                        console.log("loginWithPopup, disableAuth0Client: ", disableAuth0Client);
                         stateIn = encode(createRandomString());
                         nonceIn = encode(createRandomString());
                         code_verifier = createRandomString();
@@ -5243,21 +5288,16 @@
                 url = window.location.href;
             }
             return __awaiter(this, void 0, void 0, (function() {
-                var queryStringFragments, _a, state, code, error, error_description, transaction, tokenPath, tokenOptions, authResult, decodedToken;
+                var queryStringFragments, _a, state, code, error, error_description, transaction, tokenPath, tokenOptions, authResult, decodedAccessToken, decodedToken, cacheEntry;
                 return __generator(this, (function(_b) {
                     switch (_b.label) {
                       case 0:
                         queryStringFragments = url.split("?").slice(1);
-                        console.log("handleRedirectCallback, queryStringFragments:", queryStringFragments);
                         if (queryStringFragments.length === 0) {
                             throw new Error("There are no query params available for parsing.");
                         }
                         _a = parseQueryResult(queryStringFragments.join("")), state = _a.state, code = _a.code, 
                         error = _a.error, error_description = _a.error_description;
-                        console.log("handleRedirectCallback, state:", state);
-                        console.log("handleRedirectCallback, code:", code);
-                        console.log("handleRedirectCallback, error:", error);
-                        console.log("handleRedirectCallback, error_description:", error_description);
                         transaction = this.transactionManager.get();
                         if (!transaction) {
                             throw new Error("Invalid state");
@@ -5270,7 +5310,6 @@
                             throw new Error("Invalid state");
                         }
                         tokenPath = this.options.tokenPath || DEFAULT_TOKEN_PATH;
-                        console.log("handleRedirectCallback, disableAuth0Client:", this.options.disableAuth0Client);
                         tokenOptions = {
                             audience: transaction.audience,
                             scope: transaction.scope,
@@ -5292,13 +5331,15 @@
 
                       case 1:
                         authResult = _b.sent();
-                        console.log("handleRedirectCallback, authResult:", authResult);
+                        decodedAccessToken = o(authResult.access_token);
                         return [ 4, this._verifyIdToken(authResult.id_token, transaction.nonce, transaction.organizationId) ];
 
                       case 2:
                         decodedToken = _b.sent();
-                        console.log("handleRedirectCallback, decodedToken:", decodedToken);
-                        return [ 4, this.cacheManager.set(__assign(__assign(__assign(__assign({}, authResult), {
+                        if (decodedAccessToken.resource_access && decodedAccessToken.resource_access.gms && decodedAccessToken.resource_access.gms.roles) {
+                            decodedToken.user["http://oes.com/roles"] = decodedAccessToken.resource_access.gms.roles;
+                        }
+                        cacheEntry = __assign(__assign(__assign(__assign({}, authResult), {
                             decodedToken: decodedToken,
                             audience: transaction.audience,
                             scope: transaction.scope
@@ -5306,7 +5347,8 @@
                             oauthTokenScope: authResult.scope
                         } : null), {
                             client_id: this.options.client_id
-                        })) ];
+                        });
+                        return [ 4, this.cacheManager.set(cacheEntry) ];
 
                       case 3:
                         _b.sent();
@@ -5328,7 +5370,6 @@
                 return __generator(this, (function(_a) {
                     switch (_a.label) {
                       case 0:
-                        console.log("Auth0Client, checkSession, options:", options);
                         if (!this.cookieStorage.get(this.isAuthenticatedCookieName)) {
                             if (!this.cookieStorage.get(OLD_IS_AUTHENTICATED_COOKIE_NAME)) {
                                 return [ 2 ];
@@ -5379,8 +5420,6 @@
                         }, options), {
                             scope: getUniqueScopes(this.defaultScope, this.scope, options.scope)
                         }), ignoreCache = _a.ignoreCache, getTokenOptions = __rest(_a, [ "ignoreCache" ]);
-                        console.log("Auth0Client, getTokenSilently, ignoreCache:", ignoreCache);
-                        console.log("Auth0Client, getTokenSilently, options:", getTokenOptions);
                         return [ 4, singlePromise((function() {
                             return _this._getTokenSilently(__assign({
                                 ignoreCache: ignoreCache
@@ -5399,13 +5438,11 @@
                 options = {};
             }
             return __awaiter(this, void 0, void 0, (function() {
-                var ignoreCache, getTokenOptions, entry, entry, authResult, _a, id_token, access_token, oauthTokenScope, expires_in;
+                var ignoreCache, getTokenOptions, entry, entry, authResult, _a, cacheEntry, id_token, access_token, oauthTokenScope, expires_in;
                 return __generator(this, (function(_b) {
                     switch (_b.label) {
                       case 0:
                         ignoreCache = options.ignoreCache, getTokenOptions = __rest(options, [ "ignoreCache" ]);
-                        console.log("Auth0Client, _getTokenSilently, ignoreCache:", ignoreCache);
-                        console.log("Auth0Client, _getTokenSilently, getTokenOptions:", getTokenOptions);
                         if (!!ignoreCache) return [ 3, 2 ];
                         return [ 4, this._getEntryFromCache({
                             scope: getTokenOptions.scope,
@@ -5463,9 +5500,10 @@
 
                       case 10:
                         authResult = _a;
-                        return [ 4, this.cacheManager.set(__assign({
+                        cacheEntry = __assign({
                             client_id: this.options.client_id
-                        }, authResult)) ];
+                        }, authResult);
+                        return [ 4, this.cacheManager.set(cacheEntry) ];
 
                       case 11:
                         _b.sent();
@@ -5614,7 +5652,6 @@
                         _b = options.tokenPath, tokenPath = _b === void 0 ? this.options.tokenPath || DEFAULT_TOKEN_PATH : _b, 
                         _c = options.disableAuth0Client, disableAuth0Client = _c === void 0 ? this.options.disableAuth0Client : _c, 
                         withoutClientOptions = __rest(options, [ "authorizePath", "tokenPath", "disableAuth0Client", "detailedResponse" ]);
-                        console.log("_getTokenFromIFrame, disableAuth0Client: ", disableAuth0Client);
                         params = this._getParams(withoutClientOptions, stateIn, nonceIn, code_challenge, options.redirect_uri || this.options.redirect_uri || window.location.origin);
                         orgIdHint = this.cookieStorage.get(this.orgHintCookieName);
                         if (orgIdHint && !params.organization) {
@@ -5714,7 +5751,6 @@
                         redirect_uri = options.redirect_uri || this.options.redirect_uri || window.location.origin;
                         scope = options.scope, audience = options.audience, _a = options.disableAuth0Client, 
                         disableAuth0Client = _a === void 0 ? this.options.disableAuth0Client : _a, customOptions = __rest(options, [ "scope", "audience", "ignoreCache", "timeoutInSeconds", "detailedResponse", "disableAuth0Client" ]);
-                        console.log("_getTokenUsingRefreshToken, disableAuth0Client: ", disableAuth0Client);
                         timeout = typeof options.timeoutInSeconds === "number" ? options.timeoutInSeconds * 1e3 : null;
                         _b.label = 5;
 
